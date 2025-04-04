@@ -198,8 +198,14 @@ class Dataset:
 
 # Test
 if __name__ == "__main__":
-	root = "./test_data/"
-	ds = Dataset(root)
+    # MR+MG/MG-only/MR-only under root dir would work. Only MR will be extracted. 
+    # Make sure the original folder naming structures are unchanged.
+    # e.g. 100 PatientName MG+MR/MRxxxx-xxxx 
+	root = "./test_data/" 
+
+    # To fit MAMA-MIA, use a name ending with an underscore. e.g. "BC_"
+    # This gives output structure: BC_100/BC_100_000{phase}.nii.gz
+	ds = Dataset(root, name="BC_")
 	ds.convert_to_nii(out_dir="./nii")
 	ds.preprocess(out_dir="./nii_preprocessed")
 
