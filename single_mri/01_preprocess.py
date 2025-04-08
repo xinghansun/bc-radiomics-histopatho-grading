@@ -14,14 +14,14 @@ from collections import defaultdict
 
 
 class PatientMriDcm:
-""" One patient's MRI images of all phases. """
+    """ One patient's MRI images of all phases. """
     def __init__(self, dcm_folder_dir, patient_id, source):
         self.dcm_folder_dir = dcm_folder_dir
         self.patient_id = str(patient_id)
         self.source = source
         
     def traverse_dcm(self):
-    """ Check all .dcm files and organize by phase. """
+        """ Check all .dcm files and organize by phase. """
         image_groups = defaultdict(list)
         self.dcm_paths = [os.path.join(self.dcm_folder_dir, f)
                           for f in os.listdir(self.dcm_folder_dir) 
@@ -36,7 +36,7 @@ class PatientMriDcm:
         self.dcm_dict = image_groups
     
     def convert_to_nii(self, out_dir):
-    """ Convert .dcm files of the same phase to one .nii file. """
+        """ Convert .dcm files of the same phase to one .nii file. """
         nii_dict = {}
         for k, v in self.dcm_dict.items():
             # keep only the phase images
@@ -65,13 +65,11 @@ class PatientMriDcm:
         self.nii_path_list = [nii_path for _, nii_path in sorted(nii_dict.items())]
         
     def preprocess(self, out_dir=None):
-    """ Preprocess specific to DCE-MRI. Note co-registration may pop warnings. """
+        """ Preprocess specific to DCE-MRI. Note co-registration may pop warnings. """
         print("--- Loading nii images.")
         images = [sitk.ReadImage(path, sitk.sitkFloat32) for path in self.nii_path_list]
-        print("--- Co-registering all phases.")
-        coregistered_images = PatientMriDcm.coregister_images(images)
         print("--- Applying z-score normalization across all phases.")
-        normalized_images = PatientMriDcm.zscore_normalization(coregistered_images)
+        normalized_images = PatientMriDcm.zscore_normalization(images)
         print("--- Resampling images.\n")
         resampled_images = PatientMriDcm.resample_images(normalized_images)
         
@@ -91,18 +89,22 @@ class PatientMriDcm:
             
     @staticmethod
     def coregister_images(phase_images):
-  	""" Co-register images from different phases using phase-0 as reference image,
-  	and the rest as moving images. 
-  	"""
+        """ Unused for now.
+        Co-register images from different phases using phase-0 as reference 
+        image, and the rest as moving images. 
+        """
         return [phase_images[0]] + [
             PatientMriDcm.register_image(
                 phase_images[0], 
-                img) 
+                img
+            ) 
             for img in phase_images[1:]
         ]
+
     
     @staticmethod
     def register_image(fixed, moving):
+        """ Unused for now. """
         registration = sitk.ImageRegistrationMethod()
         registration.SetMetricAsMeanSquares()
         registration.SetInterpolator(sitk.sitkLinear)
@@ -124,7 +126,7 @@ class PatientMriDcm:
     
     @staticmethod
     def zscore_normalization(phase_images):
-    """ Z-score normalization across all phases instead each phase independently. """
+        """ Z-score normalization across all phases instead each phase independently. """
         arrays = [sitk.GetArrayFromImage(img) for img in phase_images]
         stacked_array = np.stack(arrays, axis=0)
         
@@ -137,14 +139,14 @@ class PatientMriDcm:
                                  for arr in normalized_arrays]
         
         # Preserve metadata
-        for i, img in enumerate(images):
+        for i, img in enumerate(phase_images):
             normalized_images[i].CopyInformation(img)
 
         return normalized_images
     
     @staticmethod
     def resample_images(phase_images):
-    """ Resample voxels to [1, 1, 1] spacing. """
+        """ Resample voxels to [1, 1, 1] spacing. """
         return [resample_sitk(img, 
                               new_spacing=[1, 1, 1], 
                               interpolator=sitk.sitkBSpline)
@@ -153,14 +155,14 @@ class PatientMriDcm:
 
 
 class Dataset:
-""" Collection of MRI patient images from the same project under the same path. """
+    """ Collection of MRI patient images from the same project under the same path. """
     def __init__(self, dataset_root, name="BC_"):
         self.root = dataset_root
         self.name = name
         self.scan()
     
     def scan(self):
-    """ Scan dataset_root folder to collect and organize patient MRI images. """
+        """ Scan dataset_root folder to collect and organize patient MRI images. """
         self.patients = [
             (
                 os.path.join(self.root, folder), 
@@ -181,7 +183,7 @@ class Dataset:
         }
         
         self.patient_mri_dcm_list = [
-            PatientMriDcm(final_dir, id_, self.name)
+            PatientMriDcm(dir_, id_, self.name)
             for id_, dir_ in self.mr_dcm_dir.items()
         ]
     
@@ -201,13 +203,13 @@ if __name__ == "__main__":
     # MR+MG/MG-only/MR-only under root dir would work. Only MR will be extracted. 
     # Make sure the original folder naming structures are unchanged.
     # e.g. 100 PatientName MG+MR/MRxxxx-xxxx 
-	root = "./test_data/" 
+    root = "./test_data/" 
 
     # To fit MAMA-MIA, use a name ending with an underscore. e.g. "BC_"
     # This gives output structure: BC_100/BC_100_000{phase}.nii.gz
-	ds = Dataset(root, name="BC_")
-	ds.convert_to_nii(out_dir="./nii")
-	ds.preprocess(out_dir="./nii_preprocessed")
+    ds = Dataset(root, name="BC_")
+    ds.convert_to_nii(out_dir="./nii")
+    ds.preprocess(out_dir="./nii_preprocessed")
 
 
 
